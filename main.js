@@ -118,10 +118,17 @@ function displayResults(parsedPaths, results) {
     const table = document.getElementById('resultTable');
     const thead = table.getElementsByTagName('thead')[0];
     const tbody = table.getElementsByTagName('tbody')[0];
+    let tfoot = table.getElementsByTagName('tfoot')[0];
 
     // Clear previous table content
     thead.innerHTML = '';
     tbody.innerHTML = '';
+    if (tfoot) {
+        tfoot.innerHTML = '';
+    } else {
+        tfoot = document.createElement('tfoot');
+        table.appendChild(tfoot);
+    }
 
     // Create header row
     const headerRow = document.createElement('tr');
@@ -139,6 +146,9 @@ function displayResults(parsedPaths, results) {
     thead.appendChild(headerRow);
 
     // Create rows for each file's values
+    const columnTotals = Array(parsedPaths.length).fill(0); // To store totals for each column
+    const isColumnNumeric = Array(parsedPaths.length).fill(true); // To track if a column is fully numeric
+
     results.forEach(result => {
         const row = document.createElement('tr');
 
@@ -146,12 +156,40 @@ function displayResults(parsedPaths, results) {
         fileNameCell.textContent = result.file;
         row.appendChild(fileNameCell);
 
-        result.values.forEach(value => {
+        result.values.forEach((value, index) => {
             const valueCell = document.createElement('td');
             valueCell.textContent = value !== undefined ? value : 'N/A';
             row.appendChild(valueCell);
+
+            // Try to convert the value to a number and accumulate if possible
+            const numericValue = parseFloat(value);
+            if (!isNaN(numericValue)) {
+                columnTotals[index] += numericValue;
+            } else {
+                // If any value in the column is non-numeric, mark the column as non-numeric
+                isColumnNumeric[index] = false;
+            }
         });
 
         tbody.appendChild(row);
     });
+
+    // Add a row to tfoot to display totals for numeric columns
+    const totalRow = document.createElement('tr');
+
+    const totalLabelCell = document.createElement('td');
+    totalLabelCell.textContent = 'Total';
+    totalRow.appendChild(totalLabelCell);
+
+    columnTotals.forEach((total, index) => {
+        const totalCell = document.createElement('td');
+        if (isColumnNumeric[index]) {
+            totalCell.textContent = total.toFixed(2); // Display total for numeric columns
+        } else {
+            totalCell.textContent = ''; // Leave blank for non-numeric columns
+        }
+        totalRow.appendChild(totalCell);
+    });
+
+    tfoot.appendChild(totalRow); // Append the totals row to tfoot
 }
