@@ -24,8 +24,19 @@ document.getElementById('jsonForm').addEventListener('submit', function(event) {
             reader.onload = function(event) {
                 try {
                     const json = JSON.parse(event.target.result);
-                    const values = parsedPaths.map(({ expression }) => evaluateExpression(json, expression));
-                    results.push({ file: file.name, values: values });
+
+                    if (Array.isArray(json)) {
+                        // Handle if JSON is an array
+                        json.forEach((item, index) => {
+                            const values = parsedPaths.map(({ expression }) => evaluateExpression(item, expression));
+                            results.push({ file: `${file.name} [Item ${index + 1}]`, values: values });
+                        });
+                    } else {
+                        // Handle if JSON is a single object
+                        const values = parsedPaths.map(({ expression }) => evaluateExpression(json, expression));
+                        results.push({ file: file.name, values: values });
+                    }
+
                     resolve();
                 } catch (error) {
                     reject(error);
@@ -57,11 +68,14 @@ function evaluateExpression(obj, expression) {
         // Replace object paths with their values in the expression
         const sanitizedExpression = expression.replace(/([a-zA-Z_][a-zA-Z0-9._]*)/g, match => {
             const value = getObjectValue(obj, match);
-            return value !== undefined ? value : 'undefined';
+            return typeof value === 'string' ? `"${value}"` : value;
         });
 
         // Evaluate the sanitized expression
-        return eval(sanitizedExpression);
+        const result = eval(sanitizedExpression);
+        
+        // Return the value directly if it's a string or another valid type
+        return typeof result === 'string' ? result : String(result);
     } catch (error) {
         console.error('Error evaluating expression:', expression, error);
         return 'N/A';
