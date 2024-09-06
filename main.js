@@ -60,8 +60,40 @@ document.getElementById('jsonForm').addEventListener('submit', function(event) {
 });
 
 function getObjectValue(obj, path) {
-    return path.split('.').reduce((o, p) => (o ? o[p] : undefined), obj);
+    const pathParts = path.split('.');
+
+    function recursiveTraverse(currentObj, currentPathParts) {
+        // If the current object is undefined or we have reached the end of the path, return the current object
+        if (!currentObj || currentPathParts.length === 0) {
+            return currentObj;
+        }
+
+        const currentPart = currentPathParts[0];
+        const remainingPath = currentPathParts.slice(1);
+
+        // Check if the current object is an array
+        if (Array.isArray(currentObj)) {
+            // Recursively apply the function to each item in the array
+            const arrayResults = currentObj.map(item => recursiveTraverse(item, currentPathParts));
+
+            const isNumeric = arrayResults.every(item => typeof item === 'number');
+            if (isNumeric) {
+                // Sum the array if all items are numeric
+                return arrayResults.reduce((total, num) => total + num, 0);
+            } else {
+                // Concatenate the array values with '; ' if they are not all numeric
+                return arrayResults.join('; ');
+            }
+        }
+
+        // Otherwise, continue traversing the object
+        return recursiveTraverse(currentObj[currentPart], remainingPath);
+    }
+
+    // Start the recursive traversal from the top-level object
+    return recursiveTraverse(obj, pathParts);
 }
+
 
 function evaluateExpression(obj, expression) {
     try {
@@ -73,7 +105,7 @@ function evaluateExpression(obj, expression) {
 
         // Evaluate the sanitized expression
         const result = eval(sanitizedExpression);
-        
+
         // Return the value directly if it's a string or another valid type
         return typeof result === 'string' ? result : String(result);
     } catch (error) {
@@ -82,19 +114,18 @@ function evaluateExpression(obj, expression) {
     }
 }
 
-
 function displayResults(parsedPaths, results) {
     const table = document.getElementById('resultTable');
     const thead = table.getElementsByTagName('thead')[0];
     const tbody = table.getElementsByTagName('tbody')[0];
-    
+
     // Clear previous table content
     thead.innerHTML = '';
     tbody.innerHTML = '';
 
     // Create header row
     const headerRow = document.createElement('tr');
-    
+
     const fileHeader = document.createElement('th');
     fileHeader.textContent = 'File';
     headerRow.appendChild(fileHeader);
